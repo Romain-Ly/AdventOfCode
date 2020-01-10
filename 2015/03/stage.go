@@ -8,10 +8,48 @@ import (
 	"strconv"
 )
 
+type robot struct {
+	name string
+	xpos int
+	ypos int
+}
+
 func getStrPos(xpos int, ypos int) (coord string) {
 	return strconv.Itoa(xpos) + "." + strconv.Itoa(ypos)
 }
 
+func NewRobot(name string) robot {
+	p := robot{name: name}
+	p.xpos = 0
+	p.ypos = 0
+	return p
+}
+
+func MoveRobot(arrow rune, robot *robot) (pos string) {
+	fmt.Printf("robot %s get %c\n", robot.name, arrow)
+	switch arrow {
+	case 60: // <
+		robot.xpos--
+	case 62: // >
+		robot.xpos++
+	case 94: // ^
+		robot.ypos++
+	case 118: // v
+		robot.ypos--
+	}
+
+	/* Check if coordinates has been visited. */
+	return getStrPos(robot.xpos, robot.ypos)
+}
+
+func VisitLoc(city map[string]bool, coord string) {
+	visited := city[coord]
+	if !visited {
+		city[coord] = true
+	}
+}
+
+/* ./stage <file> <nbOfRobots> */
 func main() {
 	file, err := os.Open(os.Args[1])
 	if err != nil {
@@ -19,37 +57,29 @@ func main() {
 	}
 	defer file.Close()
 
-	var total int = 0
-	var xpos int = 0
-	var ypos int = 0
-	var maps = make(map[string]bool)
-	maps[getStrPos(0, 0)] = true
+	nbRobot, err := strconv.Atoi(os.Args[2])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var robots = []robot{}
+	for i := 0; i < nbRobot; i++ {
+		n := NewRobot(strconv.Itoa(i))
+		robots = append(robots, n)
+	}
+
+	var city = make(map[string]bool)
+	VisitLoc(city, getStrPos(0, 0))
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		for _, arrow := range scanner.Text() {
-			//fmt.Printf("%c", arrow)
-			switch arrow {
-			case 60: // <
-				xpos--
-			case 62: // >
-				xpos++
-			case 94: // ^
-				ypos++
-			case 118: // v
-				ypos--
-			}
-
-			/* Check if coordinates has been visited. */
-			var coord string = getStrPos(xpos, ypos)
-			visited := maps[coord]
-			if !visited {
-				maps[coord] = true
-				total++
-			}
+		for i, arrow := range scanner.Text() {
+			coord := MoveRobot(arrow, &robots[i%nbRobot])
+			VisitLoc(city, coord)
 		}
 	}
-	fmt.Println(len(maps))
+
+	fmt.Printf("total of houses : %d\n", len(city))
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
